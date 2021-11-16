@@ -15,7 +15,7 @@ type Server struct {
 	listeners        []net.Listener
 	ports            []serial.Port
 	requestChan      chan *Request
-	function         [256](func(*Server, Framer) ([]byte, *Exception))
+	function         [256]func(*Server, Framer) ([]byte, *Exception)
 	DiscreteInputs   []byte
 	Coils            []byte
 	HoldingRegisters []uint16
@@ -33,8 +33,14 @@ type Request struct {
 func NewServer(setOptions ...ServerOption) *Server {
 	s := &Server{
 		options: ServerOptions{
-			OnReadCoils:       Noop,
-			OnWriteSingleCoil: Noop,
+			OnReadCoils:             Noop,
+			OnReadDiscreteInputs:    Noop,
+			OnReadHoldingRegisters:  Noop,
+			OnReadInputRegisters:    Noop,
+			OnWriteSingleCoil:       Noop,
+			OnWriteHoldingRegister:  Noop,
+			OnWriteMultipleCoils:    Noop,
+			OnWriteHoldingRegisters: Noop,
 		},
 	}
 	for _, setOption := range setOptions {
@@ -48,14 +54,14 @@ func NewServer(setOptions ...ServerOption) *Server {
 	s.InputRegisters = make([]uint16, 65536)
 
 	// Add default functions.
-	s.function[1] = ReadCoils
-	s.function[2] = ReadDiscreteInputs
-	s.function[3] = ReadHoldingRegisters
-	s.function[4] = ReadInputRegisters
-	s.function[5] = WriteSingleCoil
-	s.function[6] = WriteHoldingRegister
-	s.function[15] = WriteMultipleCoils
-	s.function[16] = WriteHoldingRegisters
+	s.function[FuncCodeReadCoils] = ReadCoils
+	s.function[FuncCodeReadDiscreteInputs] = ReadDiscreteInputs
+	s.function[FuncCodeReadHoldingRegisters] = ReadHoldingRegisters
+	s.function[FuncCodeReadInputRegisters] = ReadInputRegisters
+	s.function[FuncCodeWriteSingleCoil] = WriteSingleCoil
+	s.function[FuncCodeWriteSingleRegister] = WriteHoldingRegister
+	s.function[FuncCodeWriteMultipleCoils] = WriteMultipleCoils
+	s.function[FuncCodeWriteMultipleRegisters] = WriteHoldingRegisters
 
 	s.requestChan = make(chan *Request)
 	go s.handler()
