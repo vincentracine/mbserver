@@ -20,6 +20,7 @@ type Server struct {
 	Coils            []byte
 	HoldingRegisters []uint16
 	InputRegisters   []uint16
+	options          ServerOptions
 }
 
 // Request contains the connection and Modbus frame.
@@ -29,8 +30,15 @@ type Request struct {
 }
 
 // NewServer creates a new Modbus server (slave).
-func NewServer() *Server {
-	s := &Server{}
+func NewServer(setOptions ...ServerOption) *Server {
+	s := &Server{
+		options: ServerOptions{
+			OnReadCoils: Noop,
+		},
+	}
+	for _, setOption := range setOptions {
+		setOption(&s.options)
+	}
 
 	// Allocate Modbus memory maps.
 	s.DiscreteInputs = make([]byte, 65536)
