@@ -4,21 +4,23 @@ import (
 	"encoding/binary"
 )
 
+type FuncCode uint8
+
 const (
 	// Bit access
-	FuncCodeReadDiscreteInputs = 2
-	FuncCodeReadCoils          = 1
-	FuncCodeWriteSingleCoil    = 5
-	FuncCodeWriteMultipleCoils = 15
+	FuncCodeReadDiscreteInputs FuncCode = 2
+	FuncCodeReadCoils          FuncCode = 1
+	FuncCodeWriteSingleCoil    FuncCode = 5
+	FuncCodeWriteMultipleCoils FuncCode = 15
 
 	// 16-bit access
-	FuncCodeReadInputRegisters         = 4
-	FuncCodeReadHoldingRegisters       = 3
-	FuncCodeWriteSingleRegister        = 6
-	FuncCodeWriteMultipleRegisters     = 16
-	FuncCodeReadWriteMultipleRegisters = 23
-	FuncCodeMaskWriteRegister          = 22
-	FuncCodeReadFIFOQueue              = 24
+	FuncCodeReadInputRegisters         FuncCode = 4
+	FuncCodeReadHoldingRegisters       FuncCode = 3
+	FuncCodeWriteSingleRegister        FuncCode = 6
+	FuncCodeWriteMultipleRegisters     FuncCode = 16
+	FuncCodeReadWriteMultipleRegisters FuncCode = 23
+	FuncCodeMaskWriteRegister          FuncCode = 22
+	FuncCodeReadFIFOQueue              FuncCode = 24
 )
 
 // ReadCoils function 1, reads coils from internal memory.
@@ -39,7 +41,7 @@ func ReadCoils(s *Server, frame Framer) ([]byte, *Exception) {
 			data[1+i/8] |= byte(1 << shift)
 		}
 	}
-	defer s.options.OnReadCoils(frame)
+	defer s.options.OnFunction(FuncCode(frame.GetFunction()), frame)
 	return data, &Success
 }
 
@@ -61,6 +63,7 @@ func ReadDiscreteInputs(s *Server, frame Framer) ([]byte, *Exception) {
 			data[1+i/8] |= byte(1 << shift)
 		}
 	}
+	defer s.options.OnFunction(FuncCode(frame.GetFunction()), frame)
 	return data, &Success
 }
 
@@ -70,6 +73,7 @@ func ReadHoldingRegisters(s *Server, frame Framer) ([]byte, *Exception) {
 	if endRegister > 65536 {
 		return []byte{}, &IllegalDataAddress
 	}
+	defer s.options.OnFunction(FuncCode(frame.GetFunction()), frame)
 	return append([]byte{byte(numRegs * 2)}, Uint16ToBytes(s.HoldingRegisters[register:endRegister])...), &Success
 }
 
@@ -79,6 +83,7 @@ func ReadInputRegisters(s *Server, frame Framer) ([]byte, *Exception) {
 	if endRegister > 65536 {
 		return []byte{}, &IllegalDataAddress
 	}
+	defer s.options.OnFunction(FuncCode(frame.GetFunction()), frame)
 	return append([]byte{byte(numRegs * 2)}, Uint16ToBytes(s.InputRegisters[register:endRegister])...), &Success
 }
 
@@ -90,7 +95,7 @@ func WriteSingleCoil(s *Server, frame Framer) ([]byte, *Exception) {
 		value = 1
 	}
 	s.Coils[register] = byte(value)
-	defer s.options.OnWriteSingleCoil(frame)
+	defer s.options.OnFunction(FuncCode(frame.GetFunction()), frame)
 	return frame.GetData()[0:4], &Success
 }
 
@@ -98,6 +103,7 @@ func WriteSingleCoil(s *Server, frame Framer) ([]byte, *Exception) {
 func WriteHoldingRegister(s *Server, frame Framer) ([]byte, *Exception) {
 	register, value := RegisterAddressAndValue(frame)
 	s.HoldingRegisters[register] = value
+	defer s.options.OnFunction(FuncCode(frame.GetFunction()), frame)
 	return frame.GetData()[0:4], &Success
 }
 
@@ -129,6 +135,7 @@ func WriteMultipleCoils(s *Server, frame Framer) ([]byte, *Exception) {
 		}
 	}
 
+	defer s.options.OnFunction(FuncCode(frame.GetFunction()), frame)
 	return frame.GetData()[0:4], &Success
 }
 
@@ -153,6 +160,7 @@ func WriteHoldingRegisters(s *Server, frame Framer) ([]byte, *Exception) {
 		exception = &IllegalDataAddress
 	}
 
+	defer s.options.OnFunction(FuncCode(frame.GetFunction()), frame)
 	return data, exception
 }
 
