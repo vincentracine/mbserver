@@ -33,7 +33,8 @@ type Request struct {
 func NewServer(setOptions ...ServerOption) *Server {
 	s := &Server{
 		options: ServerOptions{
-			OnReadCoils: Noop,
+			OnReadCoils:       Noop,
+			OnWriteSingleCoil: Noop,
 		},
 	}
 	for _, setOption := range setOptions {
